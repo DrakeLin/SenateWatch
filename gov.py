@@ -41,10 +41,10 @@ def log_error(e):
     """
     print(e)
 
-def votesOnWebpage(hyperlink):
+def runPage(hyperlink):
     raw_html = simple_get(hyperlink)
-    html = BeautifulSoup(raw_html, 'html.parser')
-    links = html.findAll('a')
+    soup = BeautifulSoup(raw_html, 'html.parser')
+    links = soup.findAll('a')
     li = []
     for l in links:
         link =l.get('href')
@@ -52,12 +52,11 @@ def votesOnWebpage(hyperlink):
             li.append('https://www.senate.gov/' + link)
     return li
 
-def singleVoteCounter(hyperlink):
+def runSingleVote(hyperlink):
     #Setup
     print(hyperlink)
     raw_html = simple_get(hyperlink)
     soup = BeautifulSoup(raw_html, 'html.parser')
-
 
     #Question Name
     question = soup.find('div', attrs={"style": "padding-bottom:10px;"})
@@ -75,6 +74,17 @@ def singleVoteCounter(hyperlink):
             meas = meas + ' ' + m
     else:
         meas = "Motion"
+
+    #Measure URL
+    urls = soup.findAll('a')
+    url = ''
+    for l in urls:
+        u =l.get('href')
+        if u != None and u[:29] == 'http://www.congress.gov/bill/':
+            url = u
+            break
+    if url is '':
+        url = "Motion"
 
     #votes
     votes = soup.find('span', attrs={'class': 'contenttext'})
@@ -102,11 +112,11 @@ def singleVoteCounter(hyperlink):
                 state = party[3:5]
                 party = party[1]
                 vote = next(iter_votes)
-                writer.writerow([name, party, state, ques, meas, date, vote])
+                writer.writerow([name, party, state, ques, meas, url, date, vote])
             except:
                 break
             
-def runSearch(year):
+def runYear(year):
     congress = (year - 1787)/2.0
     session = 1
     if congress != round(congress):
@@ -114,24 +124,24 @@ def runSearch(year):
     congress = int(congress)
     senate_link = 'https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_' + str(congress) + '_' + str(session) + '.htm'
 
-    links = votesOnWebpage(senate_link)
+    links = runPage(senate_link)
     with open('votes.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'Date', 'Vote'])
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote'])
     for l in links:
-        singleVoteCounter(l)
+        runSingleVote(l)
 
 def searchRep(state):
     with open('votes.csv') as csv_file:
         csv_reader = csv.reader(csv_file)
-        info = [[] for i in range(7)]
+        info = [[] for i in range(8)]
         for row in csv_reader:
             if row[2] == state:
-                for i in range(7):
+                for i in range(8):
                     info[i].append(row[i])
     with open('' + state + '_votes.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'Date', 'Vote'])
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote'])
         for i in range(len(info[0])):
             r = []
             for j in info:
@@ -139,5 +149,4 @@ def searchRep(state):
             writer.writerow(r)
 
 if __name__== "__main__":
-    runSearch(2020)
-    searchRep(2020)
+   runYear(2019)
