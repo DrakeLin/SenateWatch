@@ -60,6 +60,9 @@ def runSingleVote(hyperlink):
 
     #Question Name
     question = soup.find('div', attrs={"style": "padding-bottom:10px;"})
+    if not question:
+        print(hyperlink)
+        return 
     question = question.text.strip()[10:].split()
     ques = ''
     for q in question:
