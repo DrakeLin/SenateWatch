@@ -3,6 +3,7 @@ from requests.exceptions import RequestException
 from contextlib import closing
 from bs4 import BeautifulSoup
 import csv
+import time
 
 def simple_get(url):
     """
@@ -40,12 +41,7 @@ def log_error(e):
     """
     print(e)
 
-def allVotes(hyperlink):
-    raw_html = simple_get(hyperlink)
-    html = BeautifulSoup(raw_html, 'html.parser')
-    votes = html.findAll('span', attrs={'class': 'contenttext'})
-
-def allVotes(hyperlink):
+def votesOnWebpage(hyperlink):
     raw_html = simple_get(hyperlink)
     html = BeautifulSoup(raw_html, 'html.parser')
     links = html.findAll('a')
@@ -56,20 +52,21 @@ def allVotes(hyperlink):
             li.append('https://www.senate.gov/' + link)
     return li
 
-def voteCounter(hyperlink):
+def singleVoteCounter(hyperlink):
     #Setup
+    print(hyperlink)
     raw_html = simple_get(hyperlink)
-    html = BeautifulSoup(raw_html, 'html.parser')
+    soup = BeautifulSoup(raw_html, 'html.parser')
 
     #Question Name
-    question = html.find('div', attrs={"style": "padding-bottom:10px;"})
+    question = soup.find('div', attrs={"style": "padding-bottom:10px;"})
     question = question.text.strip()[10:].split()
     ques = ''
     for q in question:
             ques = ques + ' ' + q
 
     #Measure Number
-    measure = html.find('div', attrs={'class': 'contenttext', "style": "padding-bottom:10px;"})
+    measure = soup.find('div', attrs={'class': 'contenttext', "style": "padding-bottom:10px;"})
     meas = ''
     if measure:
         measure = measure.text.strip().split()[2:]
@@ -79,12 +76,12 @@ def voteCounter(hyperlink):
         meas = "Motion"
 
     #votes
-    votes = html.find('span', attrs={'class': 'contenttext'})
+    votes = soup.find('span', attrs={'class': 'contenttext'})
     votes = votes.text.strip().split()
     iter_votes = iter(votes)
 
     #date
-    date = html.findAll('div', attrs={"style": "float:left; min-width:200px; padding-bottom:10px;", 'class': 'contenttext'})
+    date = soup.findAll('div', attrs={"style": "float:left; min-width:200px; padding-bottom:10px;", 'class': 'contenttext'})
     da = []
     for d in date:
         da.append(d.text.strip())
@@ -109,9 +106,18 @@ def voteCounter(hyperlink):
                 break
             
 if __name__== "__main__":
-    links = allVotes('https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_116_2.htm')
+    year = int(input("What year: "))
+    congress = (year - 1787)/2.0
+    session = 1
+    if congress != round(congress):
+        session = 2
+    congress = int(congress)
+    senate_link = 'https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_' + str(congress) + '_' + str(session) + '.htm'
+
+    links = votesOnWebpage(senate_link)
     with open('votes.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'Date', 'Vote'])
     for l in links:
-        voteCounter(l)
+        singleVoteCounter(l)
+        time.sleep(.5)
