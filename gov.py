@@ -58,6 +58,7 @@ def singleVoteCounter(hyperlink):
     raw_html = simple_get(hyperlink)
     soup = BeautifulSoup(raw_html, 'html.parser')
 
+
     #Question Name
     question = soup.find('div', attrs={"style": "padding-bottom:10px;"})
     question = question.text.strip()[10:].split()
@@ -105,8 +106,7 @@ def singleVoteCounter(hyperlink):
             except:
                 break
             
-if __name__== "__main__":
-    year = int(input("What year: "))
+def runSearch(year):
     congress = (year - 1787)/2.0
     session = 1
     if congress != round(congress):
@@ -120,4 +120,24 @@ if __name__== "__main__":
         writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'Date', 'Vote'])
     for l in links:
         singleVoteCounter(l)
-        time.sleep(.5)
+
+def searchRep(state):
+    with open('votes.csv') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        info = [[] for i in range(7)]
+        for row in csv_reader:
+            if row[2] == state:
+                for i in range(7):
+                    info[i].append(row[i])
+    with open('' + state + '_votes.csv', 'w') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'Date', 'Vote'])
+        for i in range(len(info[0])):
+            r = []
+            for j in info:
+                r.append(j[i])
+            writer.writerow(r)
+
+if __name__== "__main__":
+    runSearch(2020)
+    searchRep(2020)
