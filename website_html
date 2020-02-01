@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Rep Lookup</title>
+  </head>
+  <body bgcolor="#FFFFFFF">
+    <style> 
+      body{
+        background-image: url('https://www.brookings.edu/wp-content/uploads/2016/06/congress001_original.jpg');
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-size: cover;
+      }
+    </style>
+    <br>
+    <br>
+    <br>
+    <h1 align="center" style="color:#F8F8F8";> Type in year to analyze: </h1>
+    <form name="search" action="/form.py" method="get" align="center">
+      <input type="text" name="year">
+      <input type="submit" value="Submit">
+    </form> 
+  </body>
+</html>
