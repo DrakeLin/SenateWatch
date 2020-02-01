@@ -44,13 +44,10 @@ def log_error(e):
 def runPage(hyperlink):
     raw_html = simple_get(hyperlink)
     soup = BeautifulSoup(raw_html, 'html.parser')
-    links = soup.findAll('a')
-    li = []
-    for l in links:
-        link =l.get('href')
-        if link != None and link[:16] == '/legislative/LIS':
-            li.append('https://www.senate.gov/' + link)
-    return li
+    topnum = soup.find('span', attrs={"style": "display:none"})
+    topnum = topnum.text.strip()
+    topnum = int(topnum[1:-1])
+    return topnum
 
 def runSingleVote(hyperlink):
     #Setup
@@ -127,12 +124,15 @@ def runYear(year):
     congress = int(congress)
     senate_link = 'https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_' + str(congress) + '_' + str(session) + '.htm'
 
-    links = runPage(senate_link)
+    largest_num = runPage(senate_link)
     with open('votes.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote'])
-    for l in links:
-        runSingleVote(l)
+    for i in range(largest_num):
+        num = str(i+1)
+        while len(num) < 5:
+            num = '0' + num
+        runSingleVote("https://www.senate.gov//legislative/LIS/roll_call_lists/roll_call_vote_cfm.cfm?congress=" + str(congress) + "&session=" + str(session) + "&vote=" + num)
 
 def searchRep(state):
     with open('votes.csv') as csv_file:
