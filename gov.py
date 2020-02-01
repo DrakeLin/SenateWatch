@@ -40,24 +40,47 @@ def log_error(e):
     """
     print(e)
 
+def allVotes(hyperlink):
+    raw_html = simple_get(hyperlink)
+    html = BeautifulSoup(raw_html, 'html.parser')
+    votes = html.findAll('span', attrs={'class': 'contenttext'})
+
+def allVotes(hyperlink):
+    raw_html = simple_get(hyperlink)
+    html = BeautifulSoup(raw_html, 'html.parser')
+    links = html.findAll('a')
+    li = []
+    for l in links:
+        link =l.get('href')
+        if link != None and link[:16] == '/legislative/LIS':
+            li.append('https://www.senate.gov/' + link)
+    return li
+
 def voteCounter(hyperlink):
     #Setup
     raw_html = simple_get(hyperlink)
     html = BeautifulSoup(raw_html, 'html.parser')
 
+    #Question Name
+    question = html.find('div', attrs={"style": "padding-bottom:10px;"})
+    question = question.text.strip()[10:].split()
+    ques = ''
+    for q in question:
+            ques = ques + ' ' + q
+
     #Measure Number
     measure = html.find('div', attrs={'class': 'contenttext', "style": "padding-bottom:10px;"})
-    measure = measure.text.strip()
-    measure = measure.split()
-    measure = measure[2:]
     meas = ''
-    for m in measure:
-        meas = meas + ' ' + m
+    if measure:
+        measure = measure.text.strip().split()[2:]
+        for m in measure:
+            meas = meas + ' ' + m
+    else:
+        meas = "Motion"
 
     #votes
     votes = html.find('span', attrs={'class': 'contenttext'})
-    votes = votes.text.strip()
-    votes = votes.split()
+    votes = votes.text.strip().split()
     iter_votes = iter(votes)
 
     #date
@@ -68,12 +91,8 @@ def voteCounter(hyperlink):
     date = da[1][11:]
 
     #writing
-    with open('votes.csv', 'w') as csv_file:
+    with open('votes.csv', 'a') as csv_file:
         writer = csv.writer(csv_file)
-
-        #header
-        writer.writerow(['Name', 'Party', 'State', 'Measure', 'Date', 'Vote'])
-
         #for each one write
         for i in range(len(votes)//3):
             try:
@@ -85,9 +104,14 @@ def voteCounter(hyperlink):
                 state = party[3:5]
                 party = party[1]
                 vote = next(iter_votes)
-                writer.writerow([name, party, state, meas, date, vote])
+                writer.writerow([name, party, state, ques, meas, date, vote])
             except:
                 break
             
 if __name__== "__main__":
-    voteCounter('https://www.senate.gov/legislative/LIS/roll_call_lists/roll_call_vote_cfm.cfm?congress=116&session=2&vote=00001')
+    links = allVotes('https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_116_2.htm')
+    with open('votes.csv', 'w') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'Date', 'Vote'])
+    for l in links:
+        voteCounter(l)
