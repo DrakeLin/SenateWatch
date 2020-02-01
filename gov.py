@@ -40,47 +40,54 @@ def log_error(e):
     """
     print(e)
 
-#Setup
-raw_html = simple_get('https://www.senate.gov/legislative/LIS/roll_call_lists/roll_call_vote_cfm.cfm?congress=116&session=2&vote=00001')
-html = BeautifulSoup(raw_html, 'html.parser')
+def voteCounter(hyperlink):
+    #Setup
+    raw_html = simple_get(hyperlink)
+    html = BeautifulSoup(raw_html, 'html.parser')
 
-#Measure Number
-measure = html.find('div', attrs={'class': 'contenttext', "style": "padding-bottom:10px;"})
-measure = measure.text.strip()
-measure = measure.split()
-measure = measure[2:]
-meas = ''
-for m in measure:
-    meas = meas + ' ' + m
+    #Measure Number
+    measure = html.find('div', attrs={'class': 'contenttext', "style": "padding-bottom:10px;"})
+    measure = measure.text.strip()
+    measure = measure.split()
+    measure = measure[2:]
+    meas = ''
+    for m in measure:
+        meas = meas + ' ' + m
 
-#votes
-votes = html.find('span', attrs={'class': 'contenttext'})
-votes = votes.text.strip()
-votes = votes.split()
-iter_votes = iter(votes)
+    #votes
+    votes = html.find('span', attrs={'class': 'contenttext'})
+    votes = votes.text.strip()
+    votes = votes.split()
+    iter_votes = iter(votes)
 
-#date
-date = html.findAll('div', attrs={"style": "float:left; min-width:200px; padding-bottom:10px;", 'class': 'contenttext'})
-da = []
-for d in date:
-    da.append(d.text.strip())
-date = da[1][11:]
+    #date
+    date = html.findAll('div', attrs={"style": "float:left; min-width:200px; padding-bottom:10px;", 'class': 'contenttext'})
+    da = []
+    for d in date:
+        da.append(d.text.strip())
+    date = da[1][11:]
 
-#writing
-with open('votes.csv', 'w') as csv_file:
-    writer = csv.writer(csv_file)
-    writer.writerow(['Name', 'Party', 'State', 'Measure', 'Date', 'Vote'])
-    for i in range(len(votes)//3):
-        try:
-            name = next(iter_votes)
-            party = next(iter_votes)
-            if party[0] != '(':
-                name= name + ' ' + party
+    #writing
+    with open('votes.csv', 'w') as csv_file:
+        writer = csv.writer(csv_file)
+
+        #header
+        writer.writerow(['Name', 'Party', 'State', 'Measure', 'Date', 'Vote'])
+
+        #for each one write
+        for i in range(len(votes)//3):
+            try:
+                name = next(iter_votes)
                 party = next(iter_votes)
-            state = party[3:5]
-            party = party[1]
-            vote = next(iter_votes)
-            writer.writerow([name, party, state, meas, date, vote])
-        except:
-            break
-        
+                if party[0] != '(':
+                    name= name + ' ' + party
+                    party = next(iter_votes)
+                state = party[3:5]
+                party = party[1]
+                vote = next(iter_votes)
+                writer.writerow([name, party, state, meas, date, vote])
+            except:
+                break
+            
+if __name__== "__main__":
+    voteCounter('https://www.senate.gov/legislative/LIS/roll_call_lists/roll_call_vote_cfm.cfm?congress=116&session=2&vote=00001')
