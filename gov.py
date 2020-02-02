@@ -51,7 +51,7 @@ def runPage(hyperlink):
     topnum = int(topnum[1:-1])
     return topnum
 
-def runSingleVote(hyperlink, issue):
+def runSingleVote(hyperlink):
     #Setup
     print(hyperlink)
     t = 0
@@ -81,6 +81,7 @@ def runSingleVote(hyperlink, issue):
         measure = measure.text.strip().split()[2:]
         for m in measure:
             meas = meas + ' ' + m
+        meas = meas.strip()
     else:
         meas = "Motion"
 
@@ -107,6 +108,17 @@ def runSingleVote(hyperlink, issue):
         da.append(d.text.strip())
     date = da[1][11:]
 
+    #category
+    resTitle = 'tITLE'
+    policyArea = 'Area'
+    category = 'Placeholder'
+    if meas[:2] == 'PN':
+        category = 'Presidential Nomination'
+    elif resTitle.lower().find('impeachment') > 0:
+        category = 'Impeachment of the President'
+    else:
+        category = policyArea
+
     #writing
     with open('votes.csv', 'a') as csv_file:
         writer = csv.writer(csv_file)
@@ -121,7 +133,7 @@ def runSingleVote(hyperlink, issue):
                 state = party[3:5]
                 party = party[1]
                 vote = next(iter_votes)
-                writer.writerow([name, party, state, ques, meas, url, date, vote])
+                writer.writerow([name, party, state, ques, meas, url, date, vote, category])
             except:
                 break
             
@@ -135,7 +147,7 @@ def runYear(year):
     largest_num = runPage(senate_link)
     with open('votes.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote'])
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote', 'Category'])
     for i in range(largest_num):
         num = str(i+1)
         time.sleep(2)
@@ -159,7 +171,7 @@ def searchRep(state):
                     info[i].append(row[i])
     with open('' + state + '_votes.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote'])
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote', 'Category'])
         for i in range(len(info[0])):
             r = []
             for j in info:
@@ -167,4 +179,4 @@ def searchRep(state):
             writer.writerow(r)
 
 if __name__== "__main__":
-   searchRep('VT')
+    runYear(2020)
