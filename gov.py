@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 import csv
 import time
 
+buffer = []
+
 def simple_get(url):
     """
     Attempts to get the content at `url` by making an HTTP GET request.
@@ -49,21 +51,28 @@ def runPage(hyperlink):
     topnum = int(topnum[1:-1])
     return topnum
 
-def runSingleVote(hyperlink):
+def runSingleVote(hyperlink, issue):
     #Setup
     print(hyperlink)
-    raw_html = simple_get(hyperlink)
-    soup = BeautifulSoup(raw_html, 'html.parser')
+    t = 0
+    raw_html = 0
+    soup = 0
+    try:
+        raw_html = simple_get(hyperlink)
+        soup = BeautifulSoup(raw_html, 'html.parser')
 
-    #Question Name
-    question = soup.find('div', attrs={"style": "padding-bottom:10px;"})
-    if not question:
-        print(hyperlink)
-        return 
-    question = question.text.strip()[10:].split()
-    ques = ''
-    for q in question:
-            ques = ques + ' ' + q
+        #Question Name
+        question = soup.find('div', attrs={"style": "padding-bottom:10px;"})
+        question = question.text.strip()[10:].split()
+        ques = ''
+        for q in question:
+                ques = ques + ' ' + q
+        if hyperlink in buffer:
+            buffer.remove(hyperlink)
+    except:
+        print('no')
+        buffer.append(hyperlink)
+        return
 
     #Measure Number
     measure = soup.find('div', attrs={'class': 'contenttext', "style": "padding-bottom:10px;"})
@@ -80,10 +89,10 @@ def runSingleVote(hyperlink):
     url = ''
     for l in urls:
         u =l.get('href')
-        if u != None and u[:29] == 'http://www.congress.gov/bill/':
+        if u != None and u[:4] == 'http':
             url = u
             break
-    if url is '':
+    if url == '':
         url = "Motion"
 
     #votes
@@ -123,16 +132,22 @@ def runYear(year):
         session = 2
     congress = int(congress)
     senate_link = 'https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_' + str(congress) + '_' + str(session) + '.htm'
-
     largest_num = runPage(senate_link)
     with open('votes.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote'])
     for i in range(largest_num):
         num = str(i+1)
+        time.sleep(2)
         while len(num) < 5:
             num = '0' + num
         runSingleVote("https://www.senate.gov//legislative/LIS/roll_call_lists/roll_call_vote_cfm.cfm?congress=" + str(congress) + "&session=" + str(session) + "&vote=" + num)
+    while buffer:
+        time.sleep(120)
+        for hyperlink in buffer:
+            runSingleVote(hyperlink)
+            time.sleep(30)
+
 
 def searchRep(state):
     with open('votes.csv') as csv_file:
@@ -152,4 +167,4 @@ def searchRep(state):
             writer.writerow(r)
 
 if __name__== "__main__":
-   runYear(2019)
+   searchRep('VT')
