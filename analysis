@@ -1,0 +1,138 @@
+import csv
+
+def checkState(state):
+    with open('votes.csv') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        info = [[] for i in range(8)]
+        for row in csv_reader:
+            if row[2] == state:
+                for i in range(8):
+                    info[i].append(row[i])
+    with open('' + state + '_votes.csv', 'w') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote', 'Category'])
+        for i in range(len(info[0])):
+            r = []
+            for j in info:
+                r.append(j[i])
+            writer.writerow(r)
+
+def checkRep(senator, state):
+    with open('votes.csv') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        info = [[] for i in range(9)]
+        for row in csv_reader:
+            if row[0] == senator and row[2] == state:
+                for i in range(9):
+                    info[i].append(row[i])
+    with open('' + senator + '_votes.csv', 'w') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote', 'Category'])
+        for i in range(len(info[0])):
+            r = []
+            for j in info:
+                r.append(j[i])
+            writer.writerow(r)
+
+def voteWithParty(senator, state, rLeader, dLeader):
+    votes_with =  0
+    votes_total = 0
+    with open('votes.csv') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        info = [[] for i in range(9)]
+        for row in csv_reader:
+            if row[0] == senator and row[2] == state:
+                party = row[1]
+                if party == 'D':
+                    leader = dLeader
+                elif party == 'R':
+                    leader = rLeader
+                else:
+                    return -1
+
+                with open('' + leader + '_votes.csv') as csv_leadfile:
+                    csv_leadfile = csv.reader(csv_leadfile)
+                    for leadrow in csv_leadfile:
+                        if row[6] == leadrow[6]:
+                            votes_total += 1
+                            if row[7] == leadrow[7]:
+                                votes_with += 1
+    return round(votes_with/votes_total,1)
+
+def listofCategoriesandSenators():
+    categories = []
+    senators = []
+    with open('votes.csv') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        for row in csv.reader(csv_file):
+            if not row[8] in categories:
+                categories.append(row[8])
+            if not [row[0], row[1], row[2]] in senators:
+                senators.append([row[0], row[1], row[2]])
+    return categories, senators
+
+def categoryLoyalties(senator, state, rLeader, dLeader, categories):
+    catLoyalties = []
+    for category in categories:
+        votes_with =  0
+        votes_total = 0
+        with open('votes.csv') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            info = [[] for i in range(9)]
+            for row in csv_reader:
+                if row[0] == senator and row[2] == state:
+                    party = row[1]
+                    if party == 'D':
+                        leader = dLeader
+                    elif party == 'R':
+                        leader = rLeader
+                    else:
+                        votes_with = -1
+                        votes_total = 1
+                        break
+
+                    with open('' + leader + '_votes.csv') as csv_leadfile:
+                        csv_leadfile = csv.reader(csv_leadfile)
+                        for leadrow in csv_leadfile:
+                            if row[6] == leadrow[6] and row[8] == leadrow[8]:
+                                votes_total += 1
+                                if row[7] == leadrow[7]:
+                                    votes_with += 1
+        #print(votes_with, votes_total)
+        catLoyalties.append(round(votes_with/votes_total*100,1))
+    return catLoyalties
+
+def participation(senator, state):
+    committed_votes = 0
+    voting_sessions = 0
+    with(open('votes.csv')) as csv_file:
+        csv_reader = csv.reader(csv_file)
+        info = [[] for i in range(9)]
+        for row in csv_reader:
+            if row[0] == senator and row[2] == state:
+                if row[7] == 'Yea' or row[7] == 'Nay':
+                    committed_votes += 1
+                voting_sessions += 1
+    return round(committed_votes/voting_sessions,1)
+
+categories, senators = listofCategoriesandSenators()
+senators = senators[1:]
+
+with open('votes_analysis.csv', 'w') as csv_file:
+    writer = csv.writer(csv_file)
+    arr = ['Name', 'Party', 'State', 'Participation', 'Party Loyalty']
+    writer.writerow(arr)
+    for i in categories:
+        if i is not "Assorted Motion":
+            arr.append('Loyalty to ' + i)
+    for i in senators:
+        r = [i[0], i[1], i[2], participation(i[0], i[2]) * 100, voteWithParty(i[0], i[2], 'McConnell', 'Schumer') * 100]
+        s = categoryLoyalties(i[0], i[2], 'McConnell', 'Schumer', categories)
+        r += s
+        writer.writerow(r)
+
+
+if __name__== "__main__":
+    checkRep('Schumer', 'NY')
+    checkRep('McConnell', 'KY')
+    
