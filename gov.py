@@ -51,6 +51,41 @@ def runPage(hyperlink):
     topnum = int(topnum[1:-1])
     return topnum
 
+def getIssueData(hyperlink):
+    soupy = BeautifulSoup(simple_get(hyperlink), 'html.parser')
+    title = soupy.find('h1')
+
+    title = title.text.strip().split()
+    titl = ''
+    for t in range(len(title)):
+        if title[t] == 'Congress':
+            titl = title[:t]
+            titl[t-1]= titl[t-1][:-5]
+    title = ''
+    for t in titl:
+        title = title + ' ' + t
+    title = title.strip()
+
+    if title.lower().find('impeachment') > 0:
+        return '', title
+    elif "treaty" in hyperlink:
+        return 'International Affars', title
+
+    #policy area
+    policy_area = soupy.findAll('div', attrs={'class': 'tertiary_section'})
+    poli = []
+    for p in policy_area:
+        poli.append(p.text.strip())
+    poli = poli[-1].split()
+    poli = poli[4:-2]
+    policy = ''
+    for p in poli:
+        policy = policy + ' ' + p
+    policy = policy.strip()
+
+    return policy, title
+    
+
 def runSingleVote(hyperlink):
     #Setup
     print(hyperlink)
@@ -90,43 +125,11 @@ def runSingleVote(hyperlink):
     url = ''
     for l in urls:
         u =l.get('href')
-        if u != None and u[:4] == 'http':
+        if u != None and u[:4] == 'http' and not 'amendment' in u:
             url = u
             break
-    if url == '':
+    if url == '' or url == 'https://www.congress.gov/':
         url = "Motion"
-
-    #find policy area
-    policy = 'Motion'
-    soupy = ''
-    if url != 'Motion':
-        soupy = BeautifulSoup(simple_get(url), 'html.parser')
-        policy_area = soupy.findAll('div', attrs={'class': 'tertiary_section'})
-        poli = []
-        for p in policy_area:
-            poli.append(p.text.strip())
-        poli = poli[-1].split()
-        poli = poli[4:-2]
-        policy = ''
-        for p in poli:
-            policy = policy + ' ' + p
-        policy = policy.strip()
-    
-    #title
-    title = meas
-    if url != "Motion":
-        title = soupy.find('h1', attrs={'class': 'legDetail'})
-        title = title.text.strip().split()
-        titl = ''
-        for t in range(len(title)):
-            if title[t] == 'Congress':
-                titl = title[:t]
-                titl[t-1]= titl[t-1][:-5]
-        title = ''
-        for t in titl:
-            title = title + ' ' + t
-        title = title.strip()
-    
         
     #votes
     votes = soup.find('span', attrs={'class': 'contenttext'})
@@ -141,15 +144,19 @@ def runSingleVote(hyperlink):
     date = da[1][11:]
 
     #category
-    resTitle = title
-    policyArea = policy
+    resTitle = ''
+    policyArea = ''
     category = ''
     if meas[:2] == 'PN':
         category = 'Presidential Nomination'
-    elif resTitle.lower().find('impeachment') > 0:
-        category = 'Impeachment of the President'
+    elif url == 'Motion':
+        category = 'Assorted Motion'
     else:
-        category = policyArea
+        policyArea, resTitle = getIssueData(url)
+        if resTitle.lower().find('impeachment') > 0:
+            category = 'Impeachment of the President'
+        else:
+            category = policyArea
 
     #writing
     with open('votes.csv', 'a') as csv_file:
@@ -165,6 +172,8 @@ def runSingleVote(hyperlink):
                 state = party[3:5]
                 party = party[1]
                 vote = next(iter_votes)
+                if name[0:7] == "Voting ":#@devpost viewers: STANFORD EECS PEAK PERFORMANCE
+                    name = name[7:]
                 writer.writerow([name, party, state, ques, meas, url, date, vote, category])
             except:
                 break
@@ -182,7 +191,7 @@ def runYear(year):
         writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote', 'Category'])
     for i in range(largest_num):
         num = str(i+1)
-        time.sleep(2)
+        # time.sleep(2)
         while len(num) < 5:
             num = '0' + num
         runSingleVote("https://www.senate.gov//legislative/LIS/roll_call_lists/roll_call_vote_cfm.cfm?congress=" + str(congress) + "&session=" + str(session) + "&vote=" + num)
@@ -193,22 +202,5 @@ def runYear(year):
             time.sleep(30)
 
 
-def searchRep(state):
-    with open('votes.csv') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        info = [[] for i in range(8)]
-        for row in csv_reader:
-            if row[2] == state:
-                for i in range(8):
-                    info[i].append(row[i])
-    with open('' + state + '_votes.csv', 'w') as csv_file:
-        writer = csv.writer(csv_file)
-        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote', 'Category'])
-        for i in range(len(info[0])):
-            r = []
-            for j in info:
-                r.append(j[i])
-            writer.writerow(r)
-
 if __name__== "__main__":
-    runYear(2020)
+    runYear(2019)
