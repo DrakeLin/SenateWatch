@@ -96,6 +96,38 @@ def runSingleVote(hyperlink):
     if url == '':
         url = "Motion"
 
+    #find policy area
+    policy = 'Motion'
+    soupy = ''
+    if url != 'Motion':
+        soupy = BeautifulSoup(simple_get(url), 'html.parser')
+        policy_area = soupy.findAll('div', attrs={'class': 'tertiary_section'})
+        poli = []
+        for p in policy_area:
+            poli.append(p.text.strip())
+        poli = poli[-1].split()
+        poli = poli[4:-2]
+        policy = ''
+        for p in poli:
+            policy = policy + ' ' + p
+        policy = policy.strip()
+    
+    #title
+    title = meas
+    if url != "Motion":
+        title = soupy.find('h1', attrs={'class': 'legDetail'})
+        title = title.text.strip().split()
+        titl = ''
+        for t in range(len(title)):
+            if title[t] == 'Congress':
+                titl = title[:t]
+                titl[t-1]= titl[t-1][:-5]
+        title = ''
+        for t in titl:
+            title = title + ' ' + t
+        title = title.strip()
+    
+        
     #votes
     votes = soup.find('span', attrs={'class': 'contenttext'})
     votes = votes.text.strip().split()
@@ -109,9 +141,9 @@ def runSingleVote(hyperlink):
     date = da[1][11:]
 
     #category
-    resTitle = 'tITLE'
-    policyArea = 'Area'
-    category = 'Placeholder'
+    resTitle = title
+    policyArea = policy
+    category = ''
     if meas[:2] == 'PN':
         category = 'Presidential Nomination'
     elif resTitle.lower().find('impeachment') > 0:
