@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 import csv
 import time
 
+buffer = []
+
 def simple_get(url):
     """
     Attempts to get the content at `url` by making an HTTP GET request.
@@ -44,29 +46,68 @@ def log_error(e):
 def runPage(hyperlink):
     raw_html = simple_get(hyperlink)
     soup = BeautifulSoup(raw_html, 'html.parser')
-    links = soup.findAll('a')
-    li = []
-    for l in links:
-        link =l.get('href')
-        if link != None and link[:16] == '/legislative/LIS':
-            li.append('https://www.senate.gov/' + link)
-    return li
+    topnum = soup.find('span', attrs={"style": "display:none"})
+    topnum = topnum.text.strip()
+    topnum = int(topnum[1:-1])
+    return topnum
+
+def getIssueData(hyperlink):
+    soupy = BeautifulSoup(simple_get(hyperlink), 'html.parser')
+    title = soupy.find('h1')
+
+    title = title.text.strip().split()
+    titl = ''
+    for t in range(len(title)):
+        if title[t] == 'Congress':
+            titl = title[:t]
+            titl[t-1]= titl[t-1][:-5]
+    title = ''
+    for t in titl:
+        title = title + ' ' + t
+    title = title.strip()
+
+    if title.lower().find('impeachment') > 0:
+        return '', title
+    elif "treaty" in hyperlink:
+        return 'International Affars', title
+
+    #policy area
+    policy_area = soupy.findAll('div', attrs={'class': 'tertiary_section'})
+    poli = []
+    for p in policy_area:
+        poli.append(p.text.strip())
+    poli = poli[-1].split()
+    poli = poli[4:-2]
+    policy = ''
+    for p in poli:
+        policy = policy + ' ' + p
+    policy = policy.strip()
+
+    return policy, title
+    
 
 def runSingleVote(hyperlink):
     #Setup
     print(hyperlink)
-    raw_html = simple_get(hyperlink)
-    soup = BeautifulSoup(raw_html, 'html.parser')
+    t = 0
+    raw_html = 0
+    soup = 0
+    try:
+        raw_html = simple_get(hyperlink)
+        soup = BeautifulSoup(raw_html, 'html.parser')
 
-    #Question Name
-    question = soup.find('div', attrs={"style": "padding-bottom:10px;"})
-    if not question:
-        print(hyperlink)
-        return 
-    question = question.text.strip()[10:].split()
-    ques = ''
-    for q in question:
-            ques = ques + ' ' + q
+        #Question Name
+        question = soup.find('div', attrs={"style": "padding-bottom:10px;"})
+        question = question.text.strip()[10:].split()
+        ques = ''
+        for q in question:
+                ques = ques + ' ' + q
+        if hyperlink in buffer:
+            buffer.remove(hyperlink)
+    except:
+        print('no')
+        buffer.append(hyperlink)
+        return
 
     #Measure Number
     measure = soup.find('div', attrs={'class': 'contenttext', "style": "padding-bottom:10px;"})
@@ -75,6 +116,7 @@ def runSingleVote(hyperlink):
         measure = measure.text.strip().split()[2:]
         for m in measure:
             meas = meas + ' ' + m
+        meas = meas.strip()
     else:
         meas = "Motion"
 
@@ -83,12 +125,12 @@ def runSingleVote(hyperlink):
     url = ''
     for l in urls:
         u =l.get('href')
-        if u != None and u[:29] == 'http://www.congress.gov/bill/':
+        if u != None and u[:4] == 'http' and not 'amendment' in u:
             url = u
             break
-    if url is '':
+    if url == '' or url == 'https://www.congress.gov/':
         url = "Motion"
-
+        
     #votes
     votes = soup.find('span', attrs={'class': 'contenttext'})
     votes = votes.text.strip().split()
@@ -100,6 +142,21 @@ def runSingleVote(hyperlink):
     for d in date:
         da.append(d.text.strip())
     date = da[1][11:]
+
+    #category
+    resTitle = ''
+    policyArea = ''
+    category = ''
+    if meas[:2] == 'PN':
+        category = 'Presidential Nomination'
+    elif url == 'Motion':
+        category = 'Assorted Motion'
+    else:
+        policyArea, resTitle = getIssueData(url)
+        if resTitle.lower().find('impeachment') > 0:
+            category = 'Impeachment of the President'
+        else:
+            category = policyArea
 
     #writing
     with open('votes.csv', 'a') as csv_file:
@@ -115,7 +172,9 @@ def runSingleVote(hyperlink):
                 state = party[3:5]
                 party = party[1]
                 vote = next(iter_votes)
-                writer.writerow([name, party, state, ques, meas, url, date, vote])
+                if name[0:7] == "Voting ":#@devpost viewers: STANFORD EECS PEAK PERFORMANCE
+                    name = name[7:]
+                writer.writerow([name, party, state, ques, meas, url, date, vote, category])
             except:
                 break
             
@@ -126,30 +185,22 @@ def runYear(year):
         session = 2
     congress = int(congress)
     senate_link = 'https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_' + str(congress) + '_' + str(session) + '.htm'
-
-    links = runPage(senate_link)
+    largest_num = runPage(senate_link)
     with open('votes.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote'])
-    for l in links:
-        runSingleVote(l)
+        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote', 'Category'])
+    for i in range(largest_num):
+        num = str(i+1)
+        # time.sleep(2)
+        while len(num) < 5:
+            num = '0' + num
+        runSingleVote("https://www.senate.gov//legislative/LIS/roll_call_lists/roll_call_vote_cfm.cfm?congress=" + str(congress) + "&session=" + str(session) + "&vote=" + num)
+    while buffer:
+        time.sleep(120)
+        for hyperlink in buffer:
+            runSingleVote(hyperlink)
+            time.sleep(30)
 
-def searchRep(state):
-    with open('votes.csv') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        info = [[] for i in range(8)]
-        for row in csv_reader:
-            if row[2] == state:
-                for i in range(8):
-                    info[i].append(row[i])
-    with open('' + state + '_votes.csv', 'w') as csv_file:
-        writer = csv.writer(csv_file)
-        writer.writerow(['Name', 'Party', 'State', 'Question', 'Measure', 'URL', 'Date', 'Vote'])
-        for i in range(len(info[0])):
-            r = []
-            for j in info:
-                r.append(j[i])
-            writer.writerow(r)
 
 if __name__== "__main__":
-   runYear(2019)
+    runYear(2019)
